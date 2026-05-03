@@ -1,42 +1,54 @@
+import json
 from flask import Flask, jsonify, request
-from discord_interactions import verify_key_signature, InteractionType, InteractionResponseType
+from nacl.signing import VerifyKey
+from nacl.exceptions import BadSignatureError
 
 app = Flask(__name__)
 
-# Discord Developer Portalで取得する
-PUBLIC_KEY = 'YOUR_DISCORD_PUBLIC_KEY' 
+# Discord Developer Portalの「General Information」にある「PUBLIC KEY」をここに入れる
+PUBLIC_KEY = 'YOUR_DISCORD_PUBLIC_KEY'
+
+def verify_signature(request):
+    signature = request.headers.get('X-Signature-Ed25519')
+    timestamp = request.headers.get('X-Signature-Timestamp')
+    body = request.data.decode('utf-8')
+
+    if not signature or not timestamp:
+        return False
+
+    verify_key = VerifyKey(bytes.fromhex(PUBLIC_KEY))
+    try:
+        verify_key.verify(f'{timestamp}{body}'.encode(), bytes.fromhex(signature))
+        return True
+    except BadSignatureError:
+        return False
 
 @app.route('/', methods=['POST'])
 def interactions():
-    # 署名の検証（Discordからの正規のリクエストか確認）
-    signature = request.headers.get('X-Signature-Ed25519')
-    timestamp = request.headers.get('X-Signature-Timestamp')
-    if signature is None or timestamp is None or not verify_key_signature(PUBLIC_KEY, request.data, signature, timestamp):
+    # 署名検証
+    if not verify_signature(request):
         return 'Invalid request signature', 401
 
-    # リクエストデータの解析
-    interaction = request.json
+    data = request.json
+    
+    # 1. PING (Discordとの接続確認)
+    if data.get('type') == 1:
+        return jsonify({'type': 1})
 
-    # 1. PING (Discord側との接続確認用)
-    if interaction.get('type') == InteractionType.PING:
-        return jsonify({
-            'type': InteractionResponseType.PONG
-        })
-
-    # 2. APPLICATION_COMMAND (スラッシュコマンドなど)
-    if interaction.get('type') == InteractionType.APPLICATION_COMMAND:
-        command_name = interaction.get('data').get('name')
+    # 2. APPLICATION_COMMAND (スラッシュコマンド)
+    if data.get('type') == 2:
+        command_name = data.get('data', {}).get('name')
 
         if command_name == 'hello':
             return jsonify({
-                'type': InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                'type': 4,
                 'data': {
-                    'content': 'こんにちは！Vercelから返信しています。'
+                    'content': 'こんにちは！Vercelから正常に返信しています。'
                 }
             })
 
-    return jsonify({'type': InteractionResponseType.PONG})
+    return jsonify({'type': 1})
 
-# Vercel用ハンドラー
+# Vercel用
 def handler(request):
     return app(request)
