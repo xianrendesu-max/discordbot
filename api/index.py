@@ -43,7 +43,7 @@ def interactions():
             return jsonify({
                 'type': 4,
                 'data': {
-                    'content': 'こんにちは！Vercelから正常に返信しています。'
+                    'content': 'こんにちは仙人botです。色々なことができます'
                 }
             })
 
