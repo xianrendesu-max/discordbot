@@ -6,7 +6,7 @@ from nacl.exceptions import BadSignatureError
 app = Flask(__name__)
 
 # Discord Developer Portalの「General Information」にある「PUBLIC KEY」をここに入れる
-PUBLIC_KEY = 'YOUR_DISCORD_PUBLIC_KEY'
+PUBLIC_KEY = 'de10cfc414839d0915d74c7d1b7ecc3de10104b1dc703a74b6829c5006a9a12e'
 
 def verify_signature(request):
     signature = request.headers.get('X-Signature-Ed25519')
